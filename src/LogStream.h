@@ -79,7 +79,7 @@ private:
     }
 };
 
-#define LOG(level) LogStream(level, __FILE__, __LINE__)
+#define LOG(level) if(true) LogStream(level, __FILE__, __LINE__)
 
 #endif // LOG_STREAM_H
 
