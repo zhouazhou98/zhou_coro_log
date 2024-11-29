@@ -8,6 +8,7 @@
 #include <functional>
 #include <atomic>
 #include <fstream>
+// #include <chrono>
 
 class LogWorker {
 public:
@@ -76,7 +77,8 @@ private:
             std::vector<std::string> local_buffer;
             {
                 std::unique_lock<std::mutex> lock(queue_mutex_);
-                cond_var_.wait(lock, [this]() { return !is_running_ || current_size_ >= batch_size_; });
+                // cond_var_.wait(lock, [this]() { return !is_running_ || current_size_ >= batch_size_; });
+                cond_var_.wait_for(lock, flush_interval_, [this]() { return !is_running_ || current_size_ >= batch_size_; });
 
                 if (!is_running_ && buffer_.empty()) {
                     break;
@@ -112,6 +114,9 @@ private:
     std::vector<std::string> buffer_;      // 缓冲区
     size_t current_size_ = 0;              // 当前缓冲区大小
     const size_t batch_size_ = 128 * 1024; // 批量写入阈值
+
+    // timer
+    const std::chrono::milliseconds flush_interval_ = std::chrono::milliseconds(10); // 定时触发时间
 };
 
 #endif // LOG_WORKER_H
