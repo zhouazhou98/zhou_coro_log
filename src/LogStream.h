@@ -38,7 +38,8 @@ public:
         }
 
     ~LogStream() {
-        RunLogTask();
+        // RunLogTask();
+        SubmitLog();
     }
 
     template <typename T>
@@ -46,6 +47,12 @@ public:
         ss_ << value; // 写入流
         return *this;
     }
+
+    // 重载 operator new
+    void* operator new(std::size_t size);
+
+    // 重载 operator delete
+    void operator delete(void* ptr) noexcept;
 
 private:
     std::string level_;
@@ -71,6 +78,10 @@ private:
         // log_task();
     }
 
+    void SubmitLog() {
+        LogWorker::GetInstance().submit(ss_.str());
+    }
+
     static void WriteLogToFile(const std::string& log_message) {
         std::ofstream log_file("logs.txt", std::ios::app);
         if (log_file.is_open()) {
@@ -79,7 +90,33 @@ private:
     }
 };
 
-#define LOG(level) if(true) LogStream(level, __FILE__, __LINE__)
+
+// 线程局部存储的 LogStream 指针
+static thread_local LogStream* current_log_ = nullptr;
+
+void* LogStream::operator new(std::size_t size) {
+    // if (current_log_) {
+    //     throw std::runtime_error("Only one LogStream instance is allowed per thread.");
+    // }
+    // current_log_ = static_cast<LogStream*>(::operator new(size)); // 分配内存
+    // return current_log_;
+    if (!current_log_) {
+            current_log_ = static_cast<LogStream*>(std::malloc(size));
+            if (!current_log_) {
+                throw std::bad_alloc();
+            }
+        }
+    return current_log_;
+}
+
+void LogStream::operator delete(void* ptr) noexcept {
+    // if (current_log_) {
+    //     ::operator delete(ptr);  // 释放内存
+    //     current_log_ = nullptr;  // 标记为可用
+    // }
+}
+
+#define LOG(level) if(volatile bool log_guard = true) LogStream(level, __FILE__, __LINE__)
 
 #endif // LOG_STREAM_H
 
