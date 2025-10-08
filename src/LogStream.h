@@ -7,6 +7,7 @@
 // #include <coroutine>
 #include <iomanip>
 #include <fstream>
+#include "LogWorker2.h"
 
 // class LogAwaiter {
 // public:
@@ -27,6 +28,12 @@
 // private:
 //     std::string log_message_;
 // };
+    static void WriteLogToFile(const std::string& log_message) {
+        std::ofstream log_file("logs.txt", std::ios::app);
+        if (log_file.is_open()) {
+            log_file << log_message << std::endl;
+        }
+    }
 
 class LogStream {
 public:
@@ -71,24 +78,32 @@ private:
     void RunLogTask() {
         // auto log_task = 
         
-        LogWorker::GetInstance().schedule([log = std::move(ss_.str())]() {
-            // co_await LogAwaiter(log);
+            // 将 ss_ 的内容安全地移动到 std::string 中
+        std::string log = ss_.str();
+        ss_.str("");  // 清空流内容
+        ss_.clear();  // 重置流状态
+
+        // 提交日志任务
+        LogWorker::GetInstance().schedule([log = std::move(log)]() {
             WriteLogToFile(log);
         });
+        // std::string log = std::move(ss_.str());
+        // LogWorker::GetInstance().schedule([log]() {
+        //     // co_await LogAwaiter(log);
+        //     WriteLogToFile(log);
+        // });
+        //     ss_.str("");
+        //     ss_.clear();
         // log_task();
     }
 
     void SubmitLog() {
-        LogWorker::GetInstance().submit(ss_.str());
-    }
-
-    static void WriteLogToFile(const std::string& log_message) {
-        std::ofstream log_file("logs.txt", std::ios::app);
-        if (log_file.is_open()) {
-            log_file << log_message << std::endl;
-        }
+        LogWorker2::GetInstance().submit(std::move(ss_.str()));
+        ss_.str(""); // 清空流内容
+        ss_.clear(); // 重置流状态
     }
 };
+
 
 
 // 线程局部存储的 LogStream 指针

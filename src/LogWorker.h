@@ -55,42 +55,42 @@ private:
     ~LogWorker() { stop(); }
 
     void run() {
-        // while (is_running_ || !task_queue_.empty()) {
-        //     std::function<void()> task;
-        //     {
-        //         std::unique_lock<std::mutex> lock(queue_mutex_);
-        //         cond_var_.wait(lock, [this] {
-        //             return !task_queue_.empty() || !is_running_;
-        //         });
-
-        //         if (!task_queue_.empty()) {
-        //             task = std::move(task_queue_.front());
-        //             task_queue_.pop();
-        //         }
-        //     }
-
-        //     if (task) {
-        //         task(); // 执行日志任务
-        //     }
-        // }
-        while (true) {
-            std::vector<std::string> local_buffer;
+        while (is_running_ || !task_queue_.empty()) {
+            std::function<void()> task;
             {
                 std::unique_lock<std::mutex> lock(queue_mutex_);
-                // cond_var_.wait(lock, [this]() { return !is_running_ || current_size_ >= batch_size_; });
-                cond_var_.wait_for(lock, flush_interval_, [this]() { return !is_running_ || current_size_ >= batch_size_; });
+                cond_var_.wait(lock, [this] {
+                    return !task_queue_.empty() || !is_running_;
+                });
 
-                if (!is_running_ && buffer_.empty()) {
-                    break;
+                if (!task_queue_.empty()) {
+                    task = std::move(task_queue_.front());
+                    task_queue_.pop();
                 }
-
-                local_buffer.swap(buffer_);
-                current_size_ = 0;
             }
 
-            // 批量写入日志
-            WriteLogs(local_buffer);
+            if (task) {
+                task(); // 执行日志任务
+            }
         }
+        // while (true) {
+        //     std::vector<std::string> local_buffer;
+        //     {
+        //         std::unique_lock<std::mutex> lock(queue_mutex_);
+        //         // cond_var_.wait(lock, [this]() { return !is_running_ || current_size_ >= batch_size_; });
+        //         cond_var_.wait_for(lock, flush_interval_, [this]() { return !is_running_ || current_size_ >= batch_size_; });
+
+        //         if (!is_running_ && buffer_.empty()) {
+        //             break;
+        //         }
+
+        //         local_buffer.swap(buffer_);
+        //         current_size_ = 0;
+        //     }
+
+        //     // 批量写入日志
+        //     WriteLogs(local_buffer);
+        // }
     }
 
     void WriteLogs(const std::vector<std::string>& logs) {

@@ -1,5 +1,5 @@
 #include "LogStream.h"
-#include "LogWorker.h"
+#include "LogWorker2.h"
 #include <thread>
 
 void WorkerFunction(int id) {
@@ -10,7 +10,7 @@ void WorkerFunction(int id) {
 
 int main() {
     // 启动日志线程
-    LogWorker::GetInstance().start();
+    LogWorker2::GetInstance().start();
 
     // 启动多个线程测试日志
     std::thread worker1(WorkerFunction, 1);
